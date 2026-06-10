@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seattle DADU Market Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & base ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ink:      #0f1014;
+  --ink-2:    #3a3d44;
+  --ink-3:    #787c87;
+  --ink-4:    #b0b4bd;
+  --rule:     #e4e6ea;
+  --bg:       #f7f8fa;
+  --white:    #ffffff;
+  --accent:   #1d52e0;
+  --accent-2: #e8eefb;
+  --green:    #0e6e45;
+  --green-bg: #e6f4ee;
+  --amber:    #7a4500;
+  --amber-bg: #fdf0e0;
+  --serif: 'DM Serif Display', Georgia, serif;
+  --sans:  'Inter', system-ui, sans-serif;
+  --mono:  'JetBrains Mono', 'Courier New', monospace;
+}
+html { font-size: 16px; }
+body { font-family: var(--sans); background: var(--bg); color: var(--ink); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+/* ── Layout ───────────────────────────────────────────────────────────── */
+.site-header { background: var(--white); border-bottom: 1px solid var(--rule); padding: 0 2rem; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+.site-header .logo { font-family: var(--serif); font-size: 1.1rem; color: var(--ink); letter-spacing: -0.01em; }
+.site-header .meta { font-size: .75rem; color: var(--ink-3); }
+.hero { background: var(--white); border-bottom: 1px solid var(--rule); padding: 3rem 2rem 2.5rem; }
+.hero-inner { max-width: 960px; margin: 0 auto; }
+.eyebrow { font-size: .7rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: .75rem; }
+.hero h1 { font-family: var(--serif); font-size: clamp(2rem, 4vw, 3rem); color: var(--ink); line-height: 1.15; margin-bottom: 1rem; max-width: 640px; }
+.hero-stats { display: flex; gap: 2.5rem; flex-wrap: wrap; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+.hero-stat { }
+.hero-stat .val { font-family: var(--serif); font-size: 2rem; color: var(--ink); line-height: 1; }
+.hero-stat .lbl { font-size: .75rem; color: var(--ink-3); margin-top: .25rem; }
+.main { max-width: 960px; margin: 0 auto; padding: 2rem; }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--rule); margin-bottom: 2rem; overflow-x: auto; }
+.tab { padding: .625rem 1rem; font-size: .8125rem; font-weight: 500; color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color .15s; }
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--accent); border-bottom-color: var(--accent); }
+.panel { display: none; }
+.panel.on { display: block; }
+
+/* ── Section label ────────────────────────────────────────────────────── */
+.section-label { font-size: .6875rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: .875rem; margin-top: 2rem; }
+.section-label:first-child { margin-top: 0; }
+
+/* ── KPI grid ─────────────────────────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; margin-bottom: 2rem; }
+.kpi { background: var(--white); padding: 1.25rem 1.5rem; }
+.kpi .lbl { font-size: .75rem; color: var(--ink-3); margin-bottom: .375rem; }
+.kpi .val { font-family: var(--serif); font-size: 1.75rem; color: var(--ink); line-height: 1.1; }
+.kpi .sub { font-size: .6875rem; color: var(--ink-4); margin-top: .25rem; }
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+.card { background: var(--white); border: 1px solid var(--rule); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.card-title { font-size: .8125rem; font-weight: 600; color: var(--ink); margin-bottom: 1rem; }
+
+/* ── Charts ───────────────────────────────────────────────────────────── */
+.chart-wrap { position: relative; width: 100%; }
+.chart-wrap.h220 { height: 220px; }
+.chart-wrap.h260 { height: 260px; }
+.chart-wrap.h300 { height: 300px; }
+
+/* ── Bar rows ─────────────────────────────────────────────────────────── */
+.bar-row { display: flex; align-items: center; gap: .75rem; margin-bottom: .625rem; font-size: .8125rem; }
+.bar-row .name { min-width: 160px; color: var(--ink-2); }
+.bar-track { flex: 1; background: var(--bg); border-radius: 3px; height: 6px; }
+.bar-fill  { height: 6px; border-radius: 3px; }
+.bar-row .stat { min-width: 52px; text-align: right; font-weight: 500; color: var(--ink); }
+.bar-row .count { min-width: 24px; text-align: right; font-size: .75rem; color: var(--ink-3); }
+
+/* ── Table ────────────────────────────────────────────────────────────── */
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+th { font-size: .6875rem; font-weight: 600; color: var(--ink-3); text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--rule); white-space: nowrap; cursor: pointer; user-select: none; letter-spacing: .04em; text-transform: uppercase; }
+th:hover { color: var(--ink); }
+td { padding: .5rem .75rem; border-bottom: 1px solid var(--bg); color: var(--ink); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafbfc; }
+td.mono { font-family: var(--mono); font-size: .7rem; }
+.badge { display: inline-block; font-size: .65rem; font-weight: 600; padding: 2px 7px; border-radius: 3px; letter-spacing: .02em; }
+.badge-green  { background: var(--green-bg);  color: var(--green); }
+.badge-amber  { background: var(--amber-bg);  color: var(--amber); }
+
+/* ── Controls ─────────────────────────────────────────────────────────── */
+.controls { display: flex; gap: .625rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+.controls input, .controls select {
+  font-family: var(--sans); font-size: .8125rem; padding: .4rem .75rem;
+  border: 1px solid var(--rule); border-radius: 6px;
+  background: var(--white); color: var(--ink); outline: none;
+}
+.controls input { flex: 1; min-width: 160px; }
+.controls input:focus, .controls select:focus { border-color: var(--accent); }
+.record-count { font-size: .75rem; color: var(--ink-3); margin-bottom: .75rem; }
+
+/* ── Two-col grid ─────────────────────────────────────────────────────── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+.site-footer { border-top: 1px solid var(--rule); padding: 1.5rem 2rem; text-align: center; font-size: .75rem; color: var(--ink-4); margin-top: 3rem; }
+
+/* ── Reduced motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <span class="logo">Seattle DADU Market Report</span>
+  <span class="meta">Updated June 10, 2026</span>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Seattle · Detached Accessory Dwelling Units</div>
+    <h1>105 DADU sales tracked across permit records and MLS data</h1>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="val">$735K</div><div class="lbl">Median sale price</div></div>
+      <div class="hero-stat"><div class="val">$695</div><div class="lbl">Median per sq ft</div></div>
+      <div class="hero-stat"><div class="val">1,088</div><div class="lbl">Median sq ft</div></div>
+      <div class="hero-stat"><div class="val">93%</div><div class="lbl">Permits finaled at sale</div></div>
+      <div class="hero-stat"><div class="val">$479K–$945K</div><div class="lbl">Price range</div></div>
+    </div>
+  </div>
+</section>
+
+<main class="main">
+
+  <nav class="tabs" aria-label="Report sections">
+    <div class="tab on"  onclick="sw('overview',this)">Overview</div>
+    <div class="tab"     onclick="sw('by-area',this)">By area</div>
+    <div class="tab"     onclick="sw('permits',this)">Permit data</div>
+    <div class="tab"     onclick="sw('listings',this)">All listings</div>
+  </nav>
+
+  <!-- ── OVERVIEW ──────────────────────────────────────────────────────── -->
+  <div class="panel on" id="tab-overview">
+
+    <div class="section-label">Price distribution</div>
+    <div class="card">
+      <div class="card-title">Sale price — number of transactions</div>
+      <div class="chart-wrap h220"><canvas id="bucketChart" aria-label="Bar chart of sale price distribution"></canvas></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Median sale price by area</div>
+        <div class="chart-wrap h300"><canvas id="areaPriceChart" aria-label="Horizontal bar chart median price by area"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Median $/sqft by area</div>
+        <div class="chart-wrap h300"><canvas id="areaPsfChart" aria-label="Horizontal bar chart median price per sqft by area"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-label">Sales by area</div>
+    <div class="card" id="area-bars"></div>
+
+  </div>
+
+  <!-- ── BY AREA ───────────────────────────────────────────────────────── -->
+  <div class="panel" id="tab-by-area">
+    <div class="section-label">Area summary</div>
+    <div class="card">
+      <div class="table-scroll">
+        <table id="area-table">
+          <thead><tr>
+            <th>Area</th><th>Sales</th><th>Median price</th>
+            <th>Med $/sqft</th><th>Med size</th><th>Typical beds</th>
+          </tr></thead>
+          <tbody id="area-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-label">Median price trend — permits issued 2020–2025</div>
+    <div class="card">
+      <div class="chart-wrap h260"><canvas id="areaLineChart" aria-label="Multi-line chart of median price by permit year per area"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── PERMITS ───────────────────────────────────────────────────────── -->
+  <div class="panel" id="tab-permits">
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lbl">Permit finaled</div><div class="val">98</div><div class="sub">93% of matched sales</div></div>
+      <div class="kpi"><div class="lbl">Permit issued only</div><div class="val">7</div><div class="sub">Sold before final inspection</div></div>
+      <div class="kpi"><div class="lbl">Median permit value</div><div class="val">$200K</div><div class="sub">Construction cost proxy</div></div>
+      <div class="kpi"><div class="lbl">Most active year</div><div class="val">2025</div><div class="sub">44 matched sales</div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Matched sales by permit issue year</div>
+        <div class="chart-wrap h260"><canvas id="yrCountChart" aria-label="Bar chart of sales count by permit year"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Median sale price by permit issue year</div>
+        <div class="chart-wrap h260"><canvas id="yrPriceChart" aria-label="Line chart median sale price by permit year"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-label">Permit status at time of sale</div>
+    <div class="card" style="display:flex;gap:3rem;align-items:center;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:var(--serif);font-size:2rem;color:var(--ink)">98 <span style="font-size:1rem;font-family:var(--sans);font-weight:500;color:var(--green)">Finaled</span></div>
+        <div style="font-size:.75rem;color:var(--ink-3);margin-top:.25rem">Median sale price $722K</div>
+        <div style="margin-top:1.25rem;font-family:var(--serif);font-size:2rem;color:var(--ink)">7 <span style="font-size:1rem;font-family:var(--sans);font-weight:500;color:var(--amber)">Issued</span></div>
+        <div style="font-size:.75rem;color:var(--ink-3);margin-top:.25rem">Sold before final inspection · median $705K</div>
+      </div>
+      <div style="flex:1;min-width:180px">
+        <div style="background:var(--bg);border-radius:4px;height:12px;overflow:hidden">
+          <div style="width:93%;height:12px;background:var(--accent);border-radius:4px"></div>
+        </div>
+        <div style="font-size:.6875rem;color:var(--ink-3);margin-top:.5rem">93% finaled at time of sale</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ALL LISTINGS ──────────────────────────────────────────────────── -->
+  <div class="panel" id="tab-listings">
+    <div class="controls">
+      <input type="text" id="srch" placeholder="Filter by address…" oninput="filterTable()" aria-label="Filter records by address">
+      <select id="area-filter" onchange="filterTable()" aria-label="Filter by area">
+        <option value="">All areas</option>
+        <option>Ballard/Greenlake</option>
+        <option>West Seattle</option>
+        <option>North Seattle</option>
+        <option>Queen Anne/Magnolia</option>
+        <option>Central Seattle</option>
+        <option>SODO/Beacon Hill</option>
+        <option>Southeast Seattle</option>
+      </select>
+      <select id="sort-by" onchange="sortTable(this.value)" aria-label="Sort records">
+        <option value="">Sort: default</option>
+        <option value="pd">Price: high → low</option>
+        <option value="pa">Price: low → high</option>
+        <option value="psfd">$/sqft: high → low</option>
+        <option value="sqd">Size: large → small</option>
+        <option value="yrd">Permit year: newest</option>
+      </select>
+    </div>
+    <div class="record-count" id="rec-count">Showing 105 records</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th onclick="sortTable('addr')">Address</th>
+          <th onclick="sortTable('pd')">Sale price</th>
+          <th onclick="sortTable('psfd')">$/sqft</th>
+          <th onclick="sortTable('sqd')">Sqft</th>
+          <th>Beds</th><th>Baths</th>
+          <th>Area</th>
+          <th>Permit</th>
+          <th onclick="sortTable('yrd')">Yr issued</th>
+        </tr></thead>
+        <tbody id="rec-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  Data sources: Seattle GeoData DADU permits · NWMLS sales data · Exact address matching · Updated June 10, 2026
+</footer>
+
+<script>
+/* ── Data ─────────────────────────────────────────────────────────────── */
+const DATA = [
+  {a:"9228 22ND AVE SW",p:499800,sf:840,psf:595,bd:"2",ba:"1.5",area:"West Seattle",st:"Permit Finaled",yr:"2023"},
+  {a:"5984 26TH AVE SW",p:529950,sf:1062,psf:499,bd:"2",ba:"1.5",area:"West Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"9002 15TH AVE SW",p:570000,sf:1020,psf:559,bd:"2",ba:"1",area:"West Seattle",st:"Permit Finaled",yr:"2022"},
+  {a:"4834 25TH AVE SW",p:605000,sf:1089,psf:556,bd:"3",ba:"2.25",area:"West Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"7324 7TH PL SW",p:625000,sf:1037,psf:603,bd:"2",ba:"2",area:"West Seattle",st:"Permit Issued",yr:"2024"},
+  {a:"4531 26TH AVE SW",p:645000,sf:971,psf:664,bd:"2",ba:"2.25",area:"West Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"4319 SW 102ND ST",p:669000,sf:1081,psf:619,bd:"2",ba:"1.75",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"3011 SW HENDERSON ST",p:682500,sf:1089,psf:627,bd:"3",ba:"2.5",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"3511 SW TRENTON ST",p:685000,sf:1089,psf:629,bd:"3",ba:"2.5",area:"West Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"3110 SW 97TH ST",p:689000,sf:1080,psf:638,bd:"3",ba:"2.5",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"7554 39TH AVE SW",p:689975,sf:1081,psf:638,bd:"2",ba:"2.25",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"6530 18TH AVE SW",p:690000,sf:1000,psf:690,bd:"3",ba:"2.25",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"8407 42ND AVE SW",p:699000,sf:1067,psf:655,bd:"3",ba:"1.75",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"2665 51ST AVE SW",p:699000,sf:1086,psf:644,bd:"2",ba:"2.25",area:"West Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"7341 CALIFORNIA AVE SW",p:699900,sf:1120,psf:625,bd:"2",ba:"2.25",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"2923 39TH AVE SW",p:700000,sf:974,psf:719,bd:"2",ba:"2.25",area:"West Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"4106 49TH AVE SW",p:735000,sf:1108,psf:663,bd:"2",ba:"1.75",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"3415 48TH AVE SW",p:750000,sf:1077,psf:696,bd:"3",ba:"1.75",area:"West Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"3622 48TH AVE SW",p:759000,sf:1088,psf:698,bd:"2",ba:"1.5",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"4521 47TH AVE SW",p:775000,sf:1000,psf:775,bd:"3",ba:"2.5",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"3806 42ND AVE SW",p:779000,sf:1092,psf:713,bd:"2",ba:"2.25",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"6006 49TH AVE SW",p:800000,sf:1100,psf:727,bd:"2",ba:"1.75",area:"West Seattle",st:"Permit Finaled",yr:"2023"},
+  {a:"6006 49TH AVE SW",p:800000,sf:1100,psf:727,bd:"2",ba:"1.75",area:"West Seattle",st:"Permit Finaled",yr:"2023"},
+  {a:"4140 44TH AVE SW",p:810000,sf:1086,psf:746,bd:"3",ba:"1.75",area:"West Seattle",st:"Permit Issued",yr:"2025"},
+  {a:"3610 SW OTHELLO ST",p:820000,sf:1138,psf:721,bd:"2",ba:"1.75",area:"West Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"8800 41ST AVE SW",p:835900,sf:1160,psf:721,bd:"2",ba:"1.5",area:"West Seattle",st:"Permit Finaled",yr:"2023"},
+  {a:"7637 46TH AVE S",p:535000,sf:950,psf:563,bd:"2",ba:"2.25",area:"Southeast Seattle",st:"Permit Finaled",yr:"2021"},
+  {a:"9692 51ST AVE S",p:580000,sf:1069,psf:543,bd:"2",ba:"1.75",area:"Southeast Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"9620 LINDSAY PL S",p:635000,sf:1089,psf:583,bd:"3",ba:"2.25",area:"Southeast Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"9223 38TH AVE S",p:479000,sf:964,psf:497,bd:"2",ba:"1.5",area:"SODO/Beacon Hill",st:"Permit Finaled",yr:"2024"},
+  {a:"9237 36TH AVE S",p:585000,sf:1000,psf:585,bd:"2",ba:"1.5",area:"SODO/Beacon Hill",st:"Permit Finaled",yr:"2025"},
+  {a:"4814 14TH AVE S",p:710000,sf:1132,psf:627,bd:"3",ba:"2.25",area:"SODO/Beacon Hill",st:"Permit Finaled",yr:"2025"},
+  {a:"2330 17TH AVE S",p:825000,sf:1035,psf:797,bd:"3",ba:"2.25",area:"SODO/Beacon Hill",st:"Permit Finaled",yr:"2025"},
+  {a:"225 24TH AVE",p:680000,sf:1106,psf:615,bd:"2",ba:"1.25",area:"Central Seattle",st:"Permit Finaled",yr:"2021"},
+  {a:"2212 BROADWAY E",p:800000,sf:1091,psf:733,bd:"2",ba:"2.25",area:"Central Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"1109 26TH AVE",p:855000,sf:1095,psf:781,bd:"3",ba:"1.75",area:"Central Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"808 34TH AVE",p:945000,sf:1084,psf:872,bd:"2",ba:"2.25",area:"Central Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"2844 35TH AVE W",p:799999,sf:1125,psf:711,bd:"2",ba:"2",area:"Queen Anne/Magnolia",st:"Permit Finaled",yr:"2025"},
+  {a:"2114 26TH AVE W",p:825000,sf:1068,psf:772,bd:"2",ba:"1.5",area:"Queen Anne/Magnolia",st:"Permit Finaled",yr:"2020"},
+  {a:"2562 30TH AVE W",p:839000,sf:1096,psf:766,bd:"2",ba:"2.25",area:"Queen Anne/Magnolia",st:"Permit Finaled",yr:"2024"},
+  {a:"4050 32ND AVE W",p:864900,sf:1083,psf:799,bd:"3",ba:"2",area:"Queen Anne/Magnolia",st:"Permit Finaled",yr:"2025"},
+  {a:"3404 33RD AVE W",p:864950,sf:1085,psf:797,bd:"2",ba:"2.25",area:"Queen Anne/Magnolia",st:"Permit Finaled",yr:"2025"},
+  {a:"3404 33RD AVE W",p:864950,sf:1085,psf:797,bd:"2",ba:"2.25",area:"Queen Anne/Magnolia",st:"Permit Finaled",yr:"2025"},
+  {a:"2644 34TH AVE W",p:910000,sf:1083,psf:840,bd:"3",ba:"2.5",area:"Queen Anne/Magnolia",st:"Permit Finaled",yr:"2024"},
+  {a:"10055 8TH AVE NW",p:565000,sf:800,psf:706,bd:"2",ba:"1",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2018"},
+  {a:"913 N 98TH ST",p:590000,sf:1090,psf:541,bd:"3",ba:"1.5",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2023"},
+  {a:"8040 19TH AVE NW",p:595000,sf:1060,psf:561,bd:"2",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"913 N 98TH ST",p:600000,sf:1183,psf:507,bd:"3",ba:"2",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2023"},
+  {a:"915 N 98TH ST",p:620000,sf:1162,psf:534,bd:"3",ba:"2",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2023"},
+  {a:"12037 FREMONT AVE N",p:645000,sf:991,psf:651,bd:"2",ba:"1.5",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"6547 11TH AVE NW",p:664312,sf:1140,psf:583,bd:"2",ba:"2.5",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"2439 NW 61ST ST",p:670000,sf:1160,psf:578,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2014"},
+  {a:"314 NE 59TH ST",p:674950,sf:955,psf:707,bd:"2",ba:"1.5",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"712 NW 95TH ST",p:675000,sf:1088,psf:620,bd:"2",ba:"1.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2023"},
+  {a:"317 NW 86TH ST",p:675000,sf:1097,psf:615,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"317 NW 87TH ST",p:676000,sf:1087,psf:622,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Issued",yr:"2025"},
+  {a:"317 NW 87TH ST",p:676000,sf:1087,psf:622,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Issued",yr:"2025"},
+  {a:"8314 11TH AVE NW",p:700000,sf:950,psf:737,bd:"2",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2021"},
+  {a:"1004 N 48TH ST",p:705000,sf:1024,psf:688,bd:"2",ba:"2",area:"Ballard/Greenlake",st:"Permit Issued",yr:"2025"},
+  {a:"12013 9TH AVE NW",p:705000,sf:1120,psf:629,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2019"},
+  {a:"7521 12TH AVE NW",p:715000,sf:1136,psf:629,bd:"3",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"9737 EVANSTON AVE N",p:715000,sf:1088,psf:657,bd:"3",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"10717 2ND AVE NW",p:725000,sf:1086,psf:668,bd:"2",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"9735 EVANSTON AVE N",p:725000,sf:1088,psf:666,bd:"3",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Issued",yr:"2024"},
+  {a:"8016 24TH AVE NW",p:729000,sf:1092,psf:668,bd:"2",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"14016 2ND AVE NW",p:735000,sf:1160,psf:634,bd:"3",ba:"1",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2023"},
+  {a:"13750 STONE AVE N",p:737000,sf:999,psf:738,bd:"1",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"3444 NW 65TH ST",p:769950,sf:1088,psf:708,bd:"3",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"6503 DIBBLE AVE NW",p:769950,sf:1104,psf:697,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"3446 NW 65TH ST",p:770000,sf:1085,psf:710,bd:"3",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"14323 WAYNE PL N",p:770000,sf:1089,psf:707,bd:"3",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"7338 27TH AVE NW",p:775000,sf:1170,psf:662,bd:"2",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"11740 PHINNEY AVE N",p:795000,sf:1176,psf:676,bd:"2",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"3412 NW 56TH ST",p:799999,sf:1048,psf:763,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"3412 NW 56TH ST",p:799999,sf:1048,psf:763,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"13752 3RD AVE NW",p:815000,sf:1078,psf:756,bd:"3",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"13752 3RD AVE NW",p:815000,sf:1078,psf:756,bd:"3",ba:"2.25",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"8319 25TH AVE NW",p:820000,sf:1092,psf:751,bd:"2",ba:"2",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"8333 27TH AVE NW",p:825000,sf:850,psf:971,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2010"},
+  {a:"947 NW 61ST ST",p:849000,sf:1158,psf:733,bd:"2",ba:"2",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"8841 EARL AVE NW",p:867500,sf:1130,psf:768,bd:"3",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"8253 DENSMORE AVE N",p:910000,sf:1196,psf:761,bd:"3",ba:"2.5",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"328 NE 55TH ST",p:915000,sf:1036,psf:883,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2024"},
+  {a:"10039 13TH AVE NW",p:920000,sf:1096,psf:839,bd:"3",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2023"},
+  {a:"10039 13TH AVE NW",p:920000,sf:1096,psf:839,bd:"3",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2023"},
+  {a:"4118 BURKE AVE N",p:929000,sf:1092,psf:851,bd:"2",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Issued",yr:"2025"},
+  {a:"4224 MERIDIAN AVE N",p:929950,sf:1109,psf:839,bd:"3",ba:"1.75",area:"Ballard/Greenlake",st:"Permit Finaled",yr:"2025"},
+  {a:"11524 38TH AVE NE",p:605000,sf:1097,psf:552,bd:"2",ba:"2",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"13542 39TH AVE NE",p:615000,sf:1082,psf:568,bd:"2",ba:"1.75",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"13544 39TH AVE NE",p:624950,sf:1082,psf:578,bd:"2",ba:"1.75",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"13724 22ND AVE NE",p:641500,sf:1088,psf:590,bd:"2",ba:"1.5",area:"North Seattle",st:"Permit Finaled",yr:"2022"},
+  {a:"8227 LATONA AVE NE",p:685000,sf:1076,psf:637,bd:"2",ba:"2.25",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"12029 40TH AVE NE",p:695000,sf:1000,psf:695,bd:"2",ba:"2.25",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"11043 19TH AVE NE",p:699995,sf:1140,psf:614,bd:"2",ba:"2.25",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"5026 35TH AVE NE",p:720000,sf:919,psf:783,bd:"2",ba:"2",area:"North Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"2613 NE 87TH ST",p:740000,sf:1081,psf:685,bd:"2",ba:"1.75",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"5715 35TH AVE NE",p:740000,sf:1100,psf:673,bd:"2",ba:"2.25",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"14304 1ST AVE NW",p:759000,sf:1088,psf:698,bd:"2",ba:"1.5",area:"North Seattle",st:"Permit Finaled",yr:"2024"},
+  {a:"12562 17TH AVE NE",p:765000,sf:1089,psf:702,bd:"3",ba:"2.25",area:"North Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"522 NE 89TH ST",p:784000,sf:1089,psf:720,bd:"2",ba:"2.25",area:"North Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"8508 1ST AVE NE",p:795000,sf:1088,psf:731,bd:"3",ba:"2.5",area:"North Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"524 NE 89TH ST",p:799000,sf:1098,psf:728,bd:"2",ba:"2.25",area:"North Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"1709 NE 117TH ST",p:799900,sf:1089,psf:735,bd:"3",ba:"2.25",area:"North Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"5516 25TH AVE NE",p:835000,sf:1085,psf:770,bd:"3",ba:"2.5",area:"North Seattle",st:"Permit Finaled",yr:"2025"},
+  {a:"2327 NE 127TH ST",p:890000,sf:1008,psf:883,bd:"2",ba:"0.75",area:"North Seattle",st:"Permit Finaled",yr:"2020"}
+];
+
+const AREAS = ['Ballard/Greenlake','West Seattle','North Seattle','Queen Anne/Magnolia','Central Seattle','SODO/Beacon Hill','Southeast Seattle'];
+const COLORS = ['#1d52e0','#0e6e45','#6b3fa0','#b87a0a','#c0392b','#1a7a8a','#5a6e00'];
+
+function med(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a,b) => a-b), n = s.length;
+  return n%2 ? s[Math.floor(n/2)] : (s[n/2-1]+s[n/2])/2;
+}
+function K(v) { return v >= 1e6 ? '$'+(v/1e6).toFixed(2)+'M' : '$'+Math.round(v/1000)+'K'; }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
+function sw(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('tab-'+name).classList.add('on');
+}
+
+/* ── Chart defaults ───────────────────────────────────────────────────── */
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#787c87';
+const gridColor = 'rgba(0,0,0,0.05)';
+
+/* ── Overview charts ──────────────────────────────────────────────────── */
+new Chart('bucketChart', { type:'bar',
+  data:{ labels:['< $500K','$500–600K','$600–700K','$700–800K','$800–900K','$900K+'],
+    datasets:[{data:[2,8,31,35,21,8], backgroundColor:'#1d52e0', borderRadius:4, borderSkipped:false}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' sales'}}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{stepSize:5}}}}
+});
+
+const areaMed  = AREAS.map(a => Math.round(med(DATA.filter(r=>r.area===a).map(r=>r.p))));
+const areaPsf  = AREAS.map(a => Math.round(med(DATA.filter(r=>r.area===a&&r.psf).map(r=>r.psf))));
+
+new Chart('areaPriceChart', { type:'bar',
+  data:{labels:AREAS, datasets:[{data:areaMed, backgroundColor:COLORS, borderRadius:3, borderSkipped:false}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>K(c.raw)}}},
+    scales:{x:{grid:{color:gridColor},ticks:{callback:v=>K(v)}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
+});
+new Chart('areaPsfChart', { type:'bar',
+  data:{labels:AREAS, datasets:[{data:areaPsf, backgroundColor:COLORS, borderRadius:3, borderSkipped:false}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.raw+'/sqft'}}},
+    scales:{x:{grid:{color:gridColor},ticks:{callback:v=>'$'+v}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
+});
+
+const maxMed = Math.max(...areaMed);
+document.getElementById('area-bars').innerHTML = AREAS.map((a,i) => {
+  const n = DATA.filter(r=>r.area===a).length;
+  return `<div class="bar-row">
+    <span class="name">${a}</span>
+    <div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/43*100)}%;background:${COLORS[i]}"></div></div>
+    <span class="stat">${n} sales</span>
+    <span class="count">${K(areaMed[i])} med</span>
+  </div>`;
+}).join('');
+
+/* ── By-area tab ──────────────────────────────────────────────────────── */
+document.getElementById('area-tbody').innerHTML = AREAS.map((a,i) => {
+  const rows = DATA.filter(r=>r.area===a);
+  const beds = rows.reduce((m,r)=>{m[r.bd]=(m[r.bd]||0)+1;return m},{});
+  const topBed = Object.entries(beds).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+  return `<tr>
+    <td style="font-weight:600;color:${COLORS[i]}">${a}</td>
+    <td>${rows.length}</td>
+    <td>${K(med(rows.map(r=>r.p)))}</td>
+    <td>$${Math.round(med(rows.filter(r=>r.psf).map(r=>r.psf)))}/ft²</td>
+    <td>${Math.round(med(rows.filter(r=>r.sf).map(r=>r.sf)))} ft²</td>
+    <td>${topBed} BR</td>
+  </tr>`;
+}).join('');
+
+// Multi-line: median price by permit year, per area (2020-2025 only)
+const lineYrs = ['2020','2021','2022','2023','2024','2025'];
+const lineAreas = ['Ballard/Greenlake','West Seattle','North Seattle','Queen Anne/Magnolia'];
+new Chart('areaLineChart', { type:'line',
+  data:{ labels:lineYrs,
+    datasets: lineAreas.map((a,i) => ({
+      label: a,
+      data: lineYrs.map(y => { const p=DATA.filter(r=>r.area===a&&r.yr===y).map(r=>r.p); return p.length?Math.round(med(p)):null; }),
+      borderColor: COLORS[i], backgroundColor:'transparent',
+      tension:.3, pointRadius:4, pointBackgroundColor:COLORS[i], spanGaps:true
+    }))
+  },
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:16}}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{callback:v=>K(v)}}}}
+});
+
+/* ── Permit tab charts ────────────────────────────────────────────────── */
+const YRS = ['2010','2014','2018','2019','2020','2021','2022','2023','2024','2025'];
+new Chart('yrCountChart', { type:'bar',
+  data:{labels:YRS, datasets:[{data:YRS.map(y=>DATA.filter(r=>r.yr===y).length), backgroundColor:'#1d52e0', borderRadius:3, borderSkipped:false}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:gridColor}}}}
+});
+new Chart('yrPriceChart', { type:'line',
+  data:{labels:YRS, datasets:[{
+    data:YRS.map(y=>{const p=DATA.filter(r=>r.yr===y).map(r=>r.p);return p.length?Math.round(med(p)):null;}),
+    borderColor:'#0e6e45', backgroundColor:'rgba(14,110,69,0.08)', tension:.3,
+    pointRadius:4, pointBackgroundColor:'#0e6e45', fill:true, spanGaps:true
+  }]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw?K(c.raw):'no data'}}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{callback:v=>K(v)}}}}
+});
+
+/* ── Listings table ───────────────────────────────────────────────────── */
+let disp = [...DATA];
+function filterTable() {
+  const q = document.getElementById('srch').value.toUpperCase();
+  const af = document.getElementById('area-filter').value;
+  disp = DATA.filter(r => (!q || r.a.includes(q)) && (!af || r.area===af));
+  renderTable();
+}
+function sortTable(k) {
+  const m = {pd:(a,b)=>b.p-a.p, pa:(a,b)=>a.p-b.p, psfd:(a,b)=>b.psf-a.psf,
+              sqd:(a,b)=>b.sf-a.sf, yrd:(a,b)=>b.yr.localeCompare(a.yr),
+              addr:(a,b)=>a.a.localeCompare(b.a)};
+  if (m[k]) disp.sort(m[k]);
+  document.getElementById('sort-by').value = k in m ? k : '';
+  renderTable();
+}
+function renderTable() {
+  document.getElementById('rec-count').textContent = 'Showing '+disp.length+' records';
+  document.getElementById('rec-tbody').innerHTML = disp.map(r => `<tr>
+    <td class="mono">${r.a}</td>
+    <td style="font-weight:600">$${r.p.toLocaleString()}</td>
+    <td>$${r.psf}/ft²</td>
+    <td>${r.sf.toLocaleString()}&nbsp;ft²</td>
+    <td style="text-align:center">${r.bd}</td>
+    <td style="text-align:center">${r.ba}</td>
+    <td style="font-size:.75rem">${r.area}</td>
+    <td><span class="badge ${r.st==='Permit Finaled'?'badge-green':'badge-amber'}">${r.st==='Permit Finaled'?'Finaled':'Issued'}</span></td>
+    <td style="text-align:center">${r.yr}</td>
+  </tr>`).join('');
+}
+renderTable();
+</script>
+</body>
+</html>
